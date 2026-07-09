@@ -95,6 +95,7 @@ object ClipboardHelper {
     // App preferences helpers
     private const val PREFS_NAME = "copy_image_prefs"
     private const val KEY_TRANSPARENT_COPY = "pref_transparent_copy"
+    private const val KEY_SERVICE_ACTIVE = "pref_service_active"
 
     fun isTransparentCopyEnabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -104,5 +105,15 @@ object ClipboardHelper {
     fun setTransparentCopyEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_TRANSPARENT_COPY, enabled).apply()
+    }
+
+    fun isServiceActive(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_SERVICE_ACTIVE, true) // Enabled by default
+    }
+
+    fun setServiceActive(context: Context, active: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_SERVICE_ACTIVE, active).apply()
     }
 }

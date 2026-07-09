@@ -50,11 +50,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import androidx.compose.foundation.border
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.data.CopiedImage
 import com.example.ui.MainViewModel
-import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.PremiumGradientDark
-import com.example.ui.theme.PremiumGradientLight
+import com.example.ui.theme.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -79,6 +79,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isTransparentCopyEnabled by viewModel.isTransparentCopyEnabled.collectAsState()
+    val isServiceActive by viewModel.isServiceActive.collectAsState()
     val copiedImages by viewModel.uiState.collectAsState()
     val availableApps by viewModel.availableApps.collectAsState()
     val selectedAppFilter by viewModel.selectedAppFilter.collectAsState()
@@ -86,13 +87,74 @@ fun MainScreen(viewModel: MainViewModel) {
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var imageToDelete by remember { mutableStateOf<CopiedImage?>(null) }
     var selectedImageForDetail by remember { mutableStateOf<CopiedImage?>(null) }
+    var showHowToUseBottomSheet by remember { mutableStateOf(false) }
+    var showFullScreenImage by remember { mutableStateOf(false) }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val headerGradient = if (isDarkTheme) PremiumGradientDark else PremiumGradientLight
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.testTag("app_title")
+                            )
+                            Text(
+                                text = "Historial: ${copiedImages.size}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { showHowToUseBottomSheet = true },
+                        modifier = Modifier.testTag("help_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.HelpOutline,
+                            contentDescription = "Cómo usar",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.mediumTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                scrollBehavior = scrollBehavior
+            )
+        }
     ) { innerPadding ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -104,116 +166,69 @@ fun MainScreen(viewModel: MainViewModel) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Hero Banner (Expressive, asymmetrical design with gradients and abstract background elements)
+            // Section 1: Service Status Card
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 16.dp))
-                        .background(Brush.linearGradient(headerGradient))
-                        .padding(horizontal = 24.dp, vertical = 28.dp)
-                ) {
-                    // Decorative abstract circle elements for layering/depth
-                    Box(
-                        modifier = Modifier
-                            .size(160.dp)
-                            .align(Alignment.TopEnd)
-                            .offset(x = 40.dp, y = (-40).dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f))
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .align(Alignment.BottomEnd)
-                            .offset(x = 10.dp, y = 30.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
-                    )
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.app_name),
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
-                                    modifier = Modifier.testTag("app_title")
-                                )
-                                Text(
-                                    text = "Portapapeles de imágenes inteligente",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.85f),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                            // Visual Floating Icon Accent
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White.copy(alpha = 0.2f))
-                                    .shadow(elevation = 0.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-
-                        // Real-time statistics indicator capsule inside the hero header
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .clip(CapsuleShape)
-                                .background(Color.White.copy(alpha = 0.15f))
-                                .padding(horizontal = 14.dp, vertical = 6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    val isDark = isSystemInDarkTheme()
+                    val cardBgBrush = remember(isServiceActive, isDark) {
+                        if (isServiceActive) {
+                            Brush.linearGradient(
+                                colors = if (isDark) {
+                                    listOf(
+                                        PrimaryDark.copy(alpha = 0.12f),
+                                        SecondaryDark.copy(alpha = 0.08f)
+                                    )
+                                } else {
+                                    listOf(
+                                        PrimaryLight.copy(alpha = 0.08f),
+                                        SecondaryLight.copy(alpha = 0.05f)
+                                    )
+                                }
                             )
-                            Text(
-                                text = "Imágenes en historial: ${copiedImages.size}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                        } else {
+                            Brush.linearGradient(
+                                colors = if (isDark) {
+                                    listOf(
+                                        SurfaceDark.copy(alpha = 0.8f),
+                                        SurfaceDark.copy(alpha = 0.5f)
+                                    )
+                                } else {
+                                    listOf(
+                                        SurfaceLight,
+                                        BackgroundLight
+                                    )
+                                }
                             )
                         }
                     }
-                }
-            }
 
-            // Section 1: Service Status Card (Expressive asymmetrically shaped card)
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    ElevatedCard(
+                    val activeColor = MaterialTheme.colorScheme.primary
+                    val inactiveColor = MaterialTheme.colorScheme.outlineVariant
+                    val cardBorder = remember(isServiceActive, activeColor, inactiveColor) {
+                        BorderStroke(
+                            width = 1.dp,
+                            color = if (isServiceActive) {
+                                activeColor.copy(alpha = 0.25f)
+                            } else {
+                                inactiveColor
+                            }
+                        )
+                    }
+
+                    OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("settings_card"),
-                        shape = RoundedCornerShape(topStart = 32.dp, bottomEnd = 32.dp, topEnd = 8.dp, bottomStart = 8.dp),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                        shape = RoundedCornerShape(28.dp),
+                        border = cardBorder,
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = Color.Transparent
+                        )
                     ) {
                         Column(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier
+                                .background(cardBgBrush)
+                                .padding(20.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Row(
@@ -223,43 +238,44 @@ fun MainScreen(viewModel: MainViewModel) {
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    // Pulsating Green Status Dot Animation
-                                    PulsatingStatusDot()
+                                    PulsatingStatusDot(isActive = isServiceActive)
                                     
                                     Column {
                                         Text(
-                                            text = "Servicio Activo",
+                                            text = if (isServiceActive) "Servicio Activo" else "Servicio Inactivo",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = if (isServiceActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "Listo para copiar al compartir",
+                                            text = if (isServiceActive) "Listo para copiar al compartir" else "Actívalo para capturar copias",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                                         )
                                     }
                                 }
                                 Switch(
-                                    checked = true,
-                                    onCheckedChange = { /* Intent shared broadcast receiver is always active */ },
+                                    checked = isServiceActive,
+                                    onCheckedChange = { viewModel.toggleServiceActive(it) },
                                     modifier = Modifier.testTag("service_status_switch"),
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                                     )
                                 )
                             }
 
                             // Inner settings bar for transparent copy
                             Card(
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                                 ),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -315,63 +331,67 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             }
 
-            // Section 2: Quick Tutorial Card (Playful expressive guidelines card)
+            // Section 2: Search Bar
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    TutorialCard()
-                }
-            }
-
-            // Section 3: Search Bar
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { viewModel.updateSearchQuery(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("search_bar"),
-                        placeholder = { Text("Buscar imágenes en el historial...") },
+                        placeholder = { 
+                            Text(
+                                text = "Buscar imágenes en el historial...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            ) 
+                        },
                         leadingIcon = { 
                             Icon(
                                 imageVector = Icons.Default.Search, 
                                 contentDescription = "Buscar",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                modifier = Modifier.size(20.dp)
                             ) 
                         },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                    Icon(
+                                        imageVector = Icons.Default.Clear, 
+                                        contentDescription = "Limpiar",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = CircleShape,
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
                         )
                     )
                 }
             }
 
-            // Section 3.5: Filter Chips by Application Source
+            // Section 3: Filter Chips by Application Source
             if (availableApps.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = "Filtrar por origen",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                         )
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -456,17 +476,17 @@ fun MainScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .padding(top = 12.dp),
+                        .padding(top = 16.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
                             text = "Historial reciente",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -499,7 +519,8 @@ fun MainScreen(viewModel: MainViewModel) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.action_clear_all),
-                                style = MaterialTheme.typography.labelLarge
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -531,6 +552,114 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
+    // Modal Bottom Sheet for "How to Use" Tutorial
+    if (showHowToUseBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showHowToUseBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.HelpOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(
+                        text = "¿Cómo usar?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                TutorialStep(number = 1, text = "Busca una imagen en cualquier app (ej. Twitter, WhatsApp, Navegador).")
+                TutorialStep(number = 2, text = "Presiona Compartir en la imagen.")
+                TutorialStep(number = 3, text = "Selecciona 'Copiar imagen' de la lista de aplicaciones.")
+                TutorialStep(number = 4, text = "¡La imagen se copiará automáticamente al portapapeles y se guardará en tu historial!")
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = { showHowToUseBottomSheet = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Entendido", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+
+    // Immersive Fullscreen Image Viewer
+    if (showFullScreenImage && selectedImageForDetail != null) {
+        val image = selectedImageForDetail!!
+        val file = File(image.localFilePath)
+        
+        Dialog(
+            onDismissRequest = { showFullScreenImage = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                if (file.exists()) {
+                    AsyncImage(
+                        model = file,
+                        contentDescription = "Pantalla completa",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Close button at top-left
+                IconButton(
+                    onClick = { showFullScreenImage = false },
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .align(Alignment.TopStart)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+
     // Interactive Detail Dialog Sheet (Offers full-resolution preview and robust actions)
     if (selectedImageForDetail != null) {
         val image = selectedImageForDetail!!
@@ -540,136 +669,57 @@ fun MainScreen(viewModel: MainViewModel) {
             onDismissRequest = { selectedImageForDetail = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                ) {
-                    // Dialog Appbar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = MaterialTheme.colorScheme.background,
+                topBar = {
+                    MediumTopAppBar(
+                        title = { Text("Detalles de Imagen", fontWeight = FontWeight.ExtraBold) },
+                        navigationIcon = {
+                            IconButton(onClick = { selectedImageForDetail = null }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                imageToDelete = image
+                                selectedImageForDetail = null
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Eliminar",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.mediumTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.onBackground
+                        )
+                    )
+                },
+                bottomBar = {
+                    Surface(
+                        tonalElevation = 6.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ) {
-                        IconButton(onClick = { selectedImageForDetail = null }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                        }
-                        
-                        Text(
-                            text = "Detalles de Imagen",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        IconButton(onClick = {
-                            imageToDelete = image
-                            selectedImageForDetail = null
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "Eliminar",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-
-                    // Large Screen Image Preview Container (Asymmetrical corner card with elevation)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1.3f)
-                            .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(topStart = 32.dp, bottomEnd = 32.dp, topEnd = 12.dp, bottomStart = 12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        if (file.exists()) {
-                            AsyncImage(
-                                model = file,
-                                contentDescription = image.originalFileName ?: "Imagen",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ImageNotSupported,
-                                contentDescription = "No encontrado",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .align(Alignment.Center)
-                            )
-                        }
-                    }
-
-                    // Metadata details section (Scrollable)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = image.originalFileName ?: "Archivo sin nombre",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                        // Meta details item list
-                        MetadataItem(
-                            icon = Icons.Default.Apps,
-                            label = "Origen compartido",
-                            value = image.sourceAppName ?: "Sistema / Desconocido"
-                        )
-                        if (!image.sourcePackage.isNullOrEmpty()) {
-                            MetadataItem(
-                                icon = Icons.Default.Code,
-                                label = "Paquete de origen",
-                                value = image.sourcePackage
-                            )
-                        }
-                        MetadataItem(
-                            icon = Icons.Default.Schedule,
-                            label = "Fecha de copiado",
-                            value = SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.getDefault()).format(Date(image.timestamp))
-                        )
-                        MetadataItem(
-                            icon = Icons.Default.Folder,
-                            label = "Ruta local",
-                            value = image.localFilePath
-                        )
-                        MetadataItem(
-                            icon = Icons.Default.Info,
-                            label = "Formato MIME",
-                            value = image.mimeType
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Action Button Panel (Expression Primary copy button and share button)
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
                                 onClick = {
                                     viewModel.copyImageToClipboard(image)
                                     Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1.5f)
+                                    .height(48.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
@@ -677,25 +727,184 @@ fun MainScreen(viewModel: MainViewModel) {
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Copiar otra vez", style = MaterialTheme.typography.labelLarge)
+                                Text("Copiar otra vez", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             }
 
-                            Button(
-                                onClick = {
-                                    shareImageFile(context, image)
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
+                            FilledTonalButton(
+                                onClick = { shareImageFile(context, image) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Compartir", style = MaterialTheme.typography.labelLarge)
+                                Text("Compartir", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                }
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Image Preview Container with zoom/fullscreen hint
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .clickable { showFullScreenImage = true },
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (file.exists()) {
+                                AsyncImage(
+                                    model = file,
+                                    contentDescription = image.originalFileName ?: "Imagen",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                // Overlaid "view fullscreen" hint icon/button
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
+                                        .shadow(4.dp, CircleShape)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.7f))
+                                        .padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fullscreen,
+                                        contentDescription = "Pantalla completa",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.ImageNotSupported,
+                                    contentDescription = "No encontrado",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+
+                    // Elegant Metadata Grid Card
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Text(
+                                text = "Información del Archivo",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
+                            MetadataItem(
+                                icon = Icons.Default.Title,
+                                label = "Nombre del archivo",
+                                value = image.originalFileName ?: "Archivo sin nombre",
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Nombre de archivo", image.originalFileName ?: ""))
+                                    Toast.makeText(context, "Nombre copiado", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                            MetadataItem(
+                                icon = Icons.Default.Apps,
+                                label = "Origen compartido",
+                                value = image.sourceAppName ?: "Sistema / Desconocido",
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Origen compartido", image.sourceAppName ?: ""))
+                                    Toast.makeText(context, "Origen copiado", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            if (!image.sourcePackage.isNullOrEmpty()) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                MetadataItem(
+                                    icon = Icons.Default.Code,
+                                    label = "Paquete de origen",
+                                    value = image.sourcePackage,
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Paquete de origen", image.sourcePackage))
+                                        Toast.makeText(context, "Paquete copiado", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                            MetadataItem(
+                                icon = Icons.Default.Schedule,
+                                label = "Fecha de copiado",
+                                value = SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.getDefault()).format(Date(image.timestamp)),
+                                onClick = {
+                                    val formattedDate = SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.getDefault()).format(Date(image.timestamp))
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Fecha de copiado", formattedDate))
+                                    Toast.makeText(context, "Fecha copiada", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                            MetadataItem(
+                                icon = Icons.Default.Folder,
+                                label = "Ruta local",
+                                value = image.localFilePath,
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Ruta local", image.localFilePath))
+                                    Toast.makeText(context, "Ruta copiada", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                            MetadataItem(
+                                icon = Icons.Default.Info,
+                                label = "Formato MIME",
+                                value = image.mimeType,
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Formato MIME", image.mimeType))
+                                    Toast.makeText(context, "MIME copiado", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -754,7 +963,19 @@ fun MainScreen(viewModel: MainViewModel) {
 }
 
 @Composable
-fun PulsatingStatusDot() {
+fun PulsatingStatusDot(isActive: Boolean) {
+    if (!isActive) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Color.Gray)
+            )
+        }
+        return
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulsating_dot")
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.8f,
@@ -788,46 +1009,6 @@ fun PulsatingStatusDot() {
                 .clip(CircleShape)
                 .background(Color(0xFF00E676))
         )
-    }
-}
-
-@Composable
-fun TutorialCard() {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 12.dp, bottomEnd = 12.dp, topEnd = 32.dp, bottomStart = 32.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.HelpOutline,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "¿Cómo usar?",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            TutorialStep(number = 1, text = "Busca una imagen en cualquier app (ej. Twitter, WhatsApp).")
-            TutorialStep(number = 2, text = "Presiona Compartir en la imagen.")
-            TutorialStep(number = 3, text = "Selecciona 'Copiar imagen' de la lista.")
-            TutorialStep(number = 4, text = "¡Se copiará al instante al portapapeles y se guardará aquí!")
-        }
     }
 }
 
@@ -867,39 +1048,63 @@ fun EmptyHistoryState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 48.dp, horizontal = 24.dp)
+            .padding(vertical = 64.dp, horizontal = 24.dp)
             .testTag("empty_history_view"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Multi-layered visual element for clipboard history
         Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
+            modifier = Modifier.size(120.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Outlined.ContentCopy,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
+            // Background dashed circle or ornament
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))
             )
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
         Text(
             text = "Historial vacío",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface
         )
+        
         Spacer(modifier = Modifier.height(8.dp))
+        
         Text(
             text = stringResource(R.string.history_empty),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            lineHeight = 20.sp,
+            modifier = Modifier.widthIn(max = 280.dp)
         )
     }
 }
@@ -919,8 +1124,8 @@ fun HistoryGridItem(
             .aspectRatio(0.70f)
             .clickable { onItemClick() }
             .testTag("history_item_${image.id}"),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
         colors = CardDefaults.outlinedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -965,9 +1170,11 @@ fun HistoryGridItem(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .padding(8.dp)
+                            .shadow(2.dp, CircleShape)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                            .padding(4.dp),
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f), CircleShape)
+                            .padding(5.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         val context = LocalContext.current
@@ -1007,8 +1214,8 @@ fun HistoryGridItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
                         text = image.originalFileName ?: "Imagen",
@@ -1019,22 +1226,30 @@ fun HistoryGridItem(
                         overflow = TextOverflow.Ellipsis
                     )
                     
-                    Text(
-                        text = image.sourceAppName ?: "Sistema / Otro",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    Text(
-                        text = formatTimestamp(image.timestamp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        fontSize = 9.sp
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = image.sourceAppName ?: "Sistema / Otro",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        Text(
+                            text = formatTimestamp(image.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            fontSize = 9.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
 
@@ -1042,7 +1257,7 @@ fun HistoryGridItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(6.dp)
+                    .padding(8.dp)
                     .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -1050,34 +1265,36 @@ fun HistoryGridItem(
                 // Instantly copy button overlay (Action 1)
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                        .clickable { onCopyAgain() },
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                        .clickable { onCopyAgain() }
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
                         contentDescription = "Copiar de nuevo",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(13.dp)
                     )
                 }
 
                 // Delete Action Button (Action 2)
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .clickable { onDelete() },
+                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f))
+                        .clickable { onDelete() }
+                        .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.DeleteOutline,
                         contentDescription = stringResource(R.string.action_delete),
-                        tint = Color.White,
-                        modifier = Modifier.size(15.dp)
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -1086,9 +1303,18 @@ fun HistoryGridItem(
 }
 
 @Composable
-fun MetadataItem(icon: ImageVector, label: String, value: String) {
+fun MetadataItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(vertical = 6.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1120,6 +1346,15 @@ fun MetadataItem(icon: ImageVector, label: String, value: String) {
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = "Copiar valor",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp)
             )
         }
     }

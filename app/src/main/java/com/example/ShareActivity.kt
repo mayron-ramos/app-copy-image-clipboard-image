@@ -39,6 +39,13 @@ class ShareActivity : ComponentActivity() {
             val sourceAppName = getAppNameFromPackage(sourcePackage)
 
             lifecycleScope.launch {
+                // Respect service active flag!
+                if (!ClipboardHelper.isServiceActive(this@ShareActivity)) {
+                    Toast.makeText(this@ShareActivity, "Servicio inactivo. Actívalo en la aplicación Copiar imagen.", Toast.LENGTH_LONG).show()
+                    finish()
+                    return@launch
+                }
+
                 val success = ClipboardHelper.copySharedUriToClipboard(
                     context = this@ShareActivity,
                     sharedUri = imageUri,

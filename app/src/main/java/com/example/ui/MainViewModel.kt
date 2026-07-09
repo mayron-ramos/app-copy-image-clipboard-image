@@ -36,6 +36,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ClipboardHelper.isTransparentCopyEnabled(application)
     )
 
+    // Service active preference state
+    val isServiceActive = MutableStateFlow(
+        ClipboardHelper.isServiceActive(application)
+    )
+
+    fun toggleServiceActive(enabled: Boolean) {
+        isServiceActive.value = enabled
+        ClipboardHelper.setServiceActive(getApplication(), enabled)
+    }
+
     // Dynamic list of unique apps available in history
     val availableApps: StateFlow<List<String>> = repository.allImages
         .map { images ->
