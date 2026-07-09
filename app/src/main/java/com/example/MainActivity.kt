@@ -168,12 +168,12 @@ fun MainScreen(viewModel: MainViewModel) {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .testTag("main_lazy_column"),
-            contentPadding = PaddingValues(bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Section 1: Service Status Card
-            item(span = { GridItemSpan(maxLineSpan) }) {                 Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+            item(span = { GridItemSpan(maxLineSpan) }) {                 Box(modifier = Modifier.padding(vertical = 6.dp)) {
                     val activeColor = MaterialTheme.colorScheme.primary
                     val inactiveColor = MaterialTheme.colorScheme.outlineVariant
                     val cardBorder = remember(isServiceActive, activeColor, inactiveColor) {
@@ -215,7 +215,12 @@ fun MainScreen(viewModel: MainViewModel) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    PulsatingStatusDot(isActive = isServiceActive)
+                                    Icon(
+                                        imageVector = Icons.Default.ContentPaste,
+                                        contentDescription = null,
+                                        tint = if (isServiceActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                     
                                     Column {
                                         Text(
@@ -308,7 +313,7 @@ fun MainScreen(viewModel: MainViewModel) {
 
             // Section 2: Search Bar
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Box(modifier = Modifier.padding(vertical = 4.dp)) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { viewModel.updateSearchQuery(it) },
@@ -359,7 +364,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
@@ -450,7 +455,6 @@ fun MainScreen(viewModel: MainViewModel) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
                         .padding(top = 16.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -509,19 +513,17 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             } else {
                 items(copiedImages, key = { it.id }) { image ->
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        HistoryGridItem(
-                            image = image,
-                            onItemClick = {
-                                selectedImageForDetail = image
-                            },
-                            onCopyAgain = {
-                                viewModel.copyImageToClipboard(image)
-                                Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
-                            },
-                            onDelete = { imageToDelete = image }
-                        )
-                    }
+                    HistoryGridItem(
+                        image = image,
+                        onItemClick = {
+                            selectedImageForDetail = image
+                        },
+                        onCopyAgain = {
+                            viewModel.copyImageToClipboard(image)
+                            Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                        },
+                        onDelete = { imageToDelete = image }
+                    )
                 }
             }
         }
