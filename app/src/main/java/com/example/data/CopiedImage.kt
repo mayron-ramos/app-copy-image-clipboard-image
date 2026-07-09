@@ -12,6 +12,7 @@ data class CopiedImage(
     val timestamp: Long = System.currentTimeMillis(),
     val isCopied: Boolean = true,
     val sourcePackage: String? = null,
-    val sourceAppName: String? = null
+    val sourceAppName: String? = null,
+    val sourceUrl: String? = null
 )
 

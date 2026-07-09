@@ -44,6 +44,12 @@ class ShareActivity : ComponentActivity() {
             val sourcePackage = getCallingPackageName()
             val sourceAppName = getAppNameFromPackage(sourcePackage)
 
+            // Extract source URL from extra text if present
+            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+            val urlRegex = "(https?://[^\\s]+)".toRegex()
+            val urlMatch = urlRegex.find(sharedText)
+            val extractedUrl = urlMatch?.value
+
             lifecycleScope.launch {
                 // Respect service active flag!
                 if (!ClipboardHelper.isServiceActive(this@ShareActivity)) {
@@ -56,7 +62,8 @@ class ShareActivity : ComponentActivity() {
                     context = this@ShareActivity,
                     sharedUri = imageUri,
                     sourcePackage = sourcePackage,
-                    sourceAppName = sourceAppName
+                    sourceAppName = sourceAppName,
+                    sourceUrl = extractedUrl
                 )
                 if (success) {
                     Toast.makeText(this@ShareActivity, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()

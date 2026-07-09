@@ -505,18 +505,85 @@ fun MainScreen(viewModel: MainViewModel) {
                     EmptyHistoryState()
                 }
             } else {
-                items(copiedImages, key = { it.id }) { image ->
-                    HistoryGridItem(
-                        image = image,
-                        onItemClick = {
-                            selectedImageForDetail = image
-                        },
-                        onCopyAgain = {
-                            viewModel.copyImageToClipboard(image)
-                            Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
-                        },
-                        onDelete = { imageToDelete = image }
-                    )
+                val twitterImages = copiedImages.filter { 
+                    val url = it.sourceUrl ?: ""
+                    url.contains("twitter.com", ignoreCase = true) || url.contains("x.com", ignoreCase = true)
+                }
+                val genericLinkImages = copiedImages.filter { 
+                    val url = it.sourceUrl ?: ""
+                    url.isNotEmpty() && !url.contains("twitter.com", ignoreCase = true) && !url.contains("x.com", ignoreCase = true)
+                }
+                val directImages = copiedImages.filter { 
+                    it.sourceUrl.isNullOrEmpty()
+                }
+
+                if (twitterImages.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SectionHeader(
+                            title = "Publicaciones de Twitter / X",
+                            count = twitterImages.size,
+                            icon = Icons.Default.AlternateEmail
+                        )
+                    }
+                    items(twitterImages, key = { "tw_${it.id}" }) { image ->
+                        HistoryGridItem(
+                            image = image,
+                            onItemClick = {
+                                selectedImageForDetail = image
+                            },
+                            onCopyAgain = {
+                                viewModel.copyImageToClipboard(image)
+                                Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                            },
+                            onDelete = { imageToDelete = image }
+                        )
+                    }
+                }
+
+                if (genericLinkImages.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SectionHeader(
+                            title = "Enlaces Genéricos",
+                            count = genericLinkImages.size,
+                            icon = Icons.Default.Link
+                        )
+                    }
+                    items(genericLinkImages, key = { "gen_${it.id}" }) { image ->
+                        HistoryGridItem(
+                            image = image,
+                            onItemClick = {
+                                selectedImageForDetail = image
+                            },
+                            onCopyAgain = {
+                                viewModel.copyImageToClipboard(image)
+                                Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                            },
+                            onDelete = { imageToDelete = image }
+                        )
+                    }
+                }
+
+                if (directImages.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SectionHeader(
+                            title = "Imágenes Copiadas Directamente",
+                            count = directImages.size,
+                            icon = Icons.Default.Image
+                        )
+                    }
+                    items(directImages, key = { "dir_${it.id}" }) { image ->
+                        HistoryGridItem(
+                            image = image,
+                            onItemClick = {
+                                selectedImageForDetail = image
+                            },
+                            onCopyAgain = {
+                                viewModel.copyImageToClipboard(image)
+                                Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                            },
+                            onDelete = { imageToDelete = image }
+                        )
+                    }
                 }
             }
         }
@@ -861,6 +928,20 @@ fun MainScreen(viewModel: MainViewModel) {
                                 )
                             }
 
+                            if (!image.sourceUrl.isNullOrEmpty()) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                MetadataItem(
+                                    icon = Icons.Default.Link,
+                                    label = "Enlace de origen",
+                                    value = image.sourceUrl,
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Enlace de origen", image.sourceUrl))
+                                        Toast.makeText(context, "Enlace copiado", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                             MetadataItem(
@@ -1105,6 +1186,45 @@ fun EmptyHistoryState() {
             lineHeight = 20.sp,
             modifier = Modifier.widthIn(max = 280.dp)
         )
+    }
+}
+
+@Composable
+fun SectionHeader(
+    title: String,
+    count: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 18.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Badge(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ) {
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
     }
 }
 

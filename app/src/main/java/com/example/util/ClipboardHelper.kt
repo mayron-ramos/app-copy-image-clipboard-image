@@ -19,7 +19,8 @@ object ClipboardHelper {
         context: Context,
         sharedUri: Uri,
         sourcePackage: String? = null,
-        sourceAppName: String? = null
+        sourceAppName: String? = null,
+        sourceUrl: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             val contentResolver = context.contentResolver
@@ -50,14 +51,14 @@ object ClipboardHelper {
             if (originalName == null) {
                 originalName = sharedUri.lastPathSegment
             }
-
+ 
             // Copy bytes from stream
             contentResolver.openInputStream(sharedUri)?.use { inputStream ->
                 localFile.outputStream().use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
             } ?: return@withContext false
-
+ 
             // Save to database
             val database = AppDatabase.getDatabase(context)
             val repository = CopiedImageRepository(database.copiedImageDao())
@@ -68,7 +69,8 @@ object ClipboardHelper {
                 timestamp = timestamp,
                 isCopied = true,
                 sourcePackage = sourcePackage,
-                sourceAppName = sourceAppName
+                sourceAppName = sourceAppName,
+                sourceUrl = sourceUrl
             )
             repository.insert(imageRecord)
 
@@ -261,7 +263,8 @@ object ClipboardHelper {
                         timestamp = timestamp,
                         isCopied = true,
                         sourcePackage = sourcePackage,
-                        sourceAppName = sourceAppName
+                        sourceAppName = sourceAppName,
+                        sourceUrl = imageUrl
                     )
                     repository.insert(imageRecord)
                     
