@@ -215,13 +215,6 @@ fun MainScreen(viewModel: MainViewModel) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentPaste,
-                                        contentDescription = null,
-                                        tint = if (isServiceActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    
                                     Column {
                                         Text(
                                             text = if (isServiceActive) "Servicio Activo" else "Servicio Inactivo",

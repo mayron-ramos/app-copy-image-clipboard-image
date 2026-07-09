@@ -82,8 +82,12 @@ class ShareActivity : ComponentActivity() {
     }
 
     private fun handleSendText(intent: Intent) {
-        val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
-        if (sharedText != null && (sharedText.startsWith("http://") || sharedText.startsWith("https://"))) {
+        val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+        val urlRegex = "(https?://[^\\s]+)".toRegex()
+        val urlMatch = urlRegex.find(sharedText)
+        
+        if (urlMatch != null) {
+            val extractedUrl = urlMatch.value
             val sourcePackage = getCallingPackageName()
             val sourceAppName = getAppNameFromPackage(sourcePackage)
 
@@ -95,16 +99,28 @@ class ShareActivity : ComponentActivity() {
                 }
 
                 Toast.makeText(this@ShareActivity, "Descargando imagen desde URL...", Toast.LENGTH_SHORT).show()
-                val success = ClipboardHelper.copyImageUrlToClipboard(
+                val result = ClipboardHelper.copyImageUrlToClipboard(
                     context = this@ShareActivity,
-                    imageUrl = sharedText.trim(),
+                    imageUrl = extractedUrl,
                     sourcePackage = sourcePackage,
                     sourceAppName = sourceAppName
                 )
-                if (success) {
-                    Toast.makeText(this@ShareActivity, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@ShareActivity, "Error al descargar o procesar la URL", Toast.LENGTH_SHORT).show()
+                when (result) {
+                    ClipboardHelper.CopyImageUrlResult.SUCCESS -> {
+                        Toast.makeText(this@ShareActivity, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                    }
+                    ClipboardHelper.CopyImageUrlResult.NOT_AN_IMAGE -> {
+                        Toast.makeText(this@ShareActivity, "La URL compartida no contiene una imagen válida.", Toast.LENGTH_LONG).show()
+                    }
+                    ClipboardHelper.CopyImageUrlResult.TWITTER_NO_IMAGES -> {
+                        Toast.makeText(this@ShareActivity, "Esta publicación de Twitter/X no contiene imágenes.", Toast.LENGTH_LONG).show()
+                    }
+                    ClipboardHelper.CopyImageUrlResult.NETWORK_ERROR -> {
+                        Toast.makeText(this@ShareActivity, "Error de red al intentar descargar la imagen.", Toast.LENGTH_LONG).show()
+                    }
+                    ClipboardHelper.CopyImageUrlResult.FAILED -> {
+                        Toast.makeText(this@ShareActivity, "No se pudo procesar la URL de la imagen.", Toast.LENGTH_LONG).show()
+                    }
                 }
 
                 if (ClipboardHelper.isTransparentCopyEnabled(this@ShareActivity)) {
@@ -118,7 +134,7 @@ class ShareActivity : ComponentActivity() {
                 }
             }
         } else {
-            Toast.makeText(this, "El texto compartido no es una URL de imagen válida.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "El texto compartido no contiene una URL válida.", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
