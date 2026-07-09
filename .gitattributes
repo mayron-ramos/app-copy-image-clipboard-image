@@ -1,0 +1,4 @@
+# Treat all .jar files strictly as binary to prevent Git from corrupting them during checkout/push
+*.jar binary
+*.png binary
+*.webp binary
