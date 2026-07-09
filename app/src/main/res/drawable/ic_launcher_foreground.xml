@@ -1,33 +1,8 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Clipboard body -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M32,24 h44 c3.3,0 6,2.7 6,6 v48 c0,3.3 -2.7,6 -6,6 H32 c-3.3,0 -6,-2.7 -6,-6 V30 C26,26.7 28.7,24 32,24 z" />
-    
-    <!-- Clipboard metal clip at top -->
-    <path
-        android:fillColor="#CFD8DC"
-        android:pathData="M44,20 h20 c1.1,0 2,0.9 2,2 v4 H42 v-4 C42,20.9 42.9,20 44,20 z" />
-    <path
-        android:fillColor="#90A4AE"
-        android:pathData="M48,16 h12 c1.1,0 2,0.9 2,2 v2 H46 v-2 C46,16.9 46.9,16 48,16 z" />
-
-    <!-- Image Card background inside clipboard -->
-    <path
-        android:fillColor="#E0F7FA"
-        android:pathData="M34,36 h40 c1.1,0 2,0.9 2,2 v32 c0,1.1 -0.9,2 -2,2 H34 c-1.1,0 -2,-0.9 -2,-2 V38 C32,36.9 32.9,36 34,36 z" />
-
-    <!-- Image scene / mountains inside -->
-    <path
-        android:fillColor="#00ACC1"
-        android:pathData="M36,64 l10,-12 l8,10 l10,-14 l10,16 z" />
-
-    <!-- Sun inside image scene -->
-    <path
-        android:fillColor="#FFB300"
-        android:pathData="M64,48 m-4,0 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="64dp"
+        android:height="64dp"
+        android:drawable="@drawable/ic_launcher_foreground_vector"
+        android:gravity="center" />
+</layer-list>
