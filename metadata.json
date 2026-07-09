@@ -1,0 +1,6 @@
+{
+  "name": "Copiar imagen",
+  "description": "Copia imágenes de forma instantánea al portapapeles al compartirlas con la aplicación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

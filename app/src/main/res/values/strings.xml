@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Copiar imagen</string>
+    <string name="title_history">Historial de Copias</string>
+    <string name="title_settings">Configuración</string>
+    <string name="settings_transparent_title">Copiado instantáneo (transparente)</string>
+    <string name="settings_transparent_desc">Copia la imagen y cierra la app automáticamente sin interrumpirte al compartir.</string>
+    <string name="toast_copied_success">Imagen copiada al portapapeles</string>
+    <string name="toast_copied_failed">Error al copiar la imagen al portapapeles</string>
+    <string name="toast_invalid_mime">El archivo compartido no es una imagen válida</string>
+    <string name="history_empty">No hay imágenes en el historial todavía. ¡Prueba a compartir una imagen con Copiar imagen!</string>
+    <string name="action_clear_all">Borrar todo</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_copy_again">Copiar de nuevo</string>
+    <string name="confirm_clear_title">¿Borrar historial?</string>
+    <string name="confirm_clear_desc">Se eliminarán permanentemente todas las imágenes guardadas localmente.</string>
+    <string name="confirm_delete_title">¿Eliminar imagen?</string>
+    <string name="confirm_delete_desc">Se eliminará esta imagen del historial y del almacenamiento local.</string>
+    <string name="dialog_cancel">Cancelar</string>
+    <string name="dialog_confirm">Confirmar</string>
+</resources>
