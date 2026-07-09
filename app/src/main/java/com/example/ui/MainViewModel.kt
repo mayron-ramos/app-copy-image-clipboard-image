@@ -19,10 +19,12 @@ import java.io.File
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: CopiedImageRepository
+    val autoHideOrigins = MutableStateFlow<Set<String>>(emptySet())
     
     init {
         val database = AppDatabase.getDatabase(application)
         repository = CopiedImageRepository(database.copiedImageDao())
+        autoHideOrigins.value = ClipboardHelper.getAutoHideOrigins(application)
     }
 
     // Search query state
@@ -30,6 +32,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Selected app filter (null means "All")
     val selectedAppFilter = MutableStateFlow<String?>(null)
+
+    // Sort options
+    val sortField = MutableStateFlow(SortField.DATE)
+    val sortOrder = MutableStateFlow(SortOrder.DESCENDING)
 
     // Transparent copy preference state
     val isTransparentCopyEnabled = MutableStateFlow(
@@ -41,6 +47,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ClipboardHelper.isServiceActive(application)
     )
 
+    // Storage controls state
+    val isLimitByCountEnabled = MutableStateFlow(
+        ClipboardHelper.isLimitByCountEnabled(application)
+    )
+    val limitByCountValue = MutableStateFlow(
+        ClipboardHelper.getLimitByCountValue(application)
+    )
+    val isLimitByAgeEnabled = MutableStateFlow(
+        ClipboardHelper.isLimitByAgeEnabled(application)
+    )
+    val limitByAgeValue = MutableStateFlow(
+        ClipboardHelper.getLimitByAgeValue(application)
+    )
+    val isLimitBySizeEnabled = MutableStateFlow(
+        ClipboardHelper.isLimitBySizeEnabled(application)
+    )
+    val limitBySizeValue = MutableStateFlow(
+        ClipboardHelper.getLimitBySizeValue(application)
+    )
+
     fun toggleServiceActive(enabled: Boolean) {
         isServiceActive.value = enabled
         ClipboardHelper.setServiceActive(getApplication(), enabled)
@@ -48,22 +74,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Dynamic list of unique apps available in history
     val availableApps: StateFlow<List<String>> = repository.allImages
-        .map { images ->
-            images.mapNotNull { it.sourceAppName }.distinct().sorted()
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+         .map { images ->
+             images.mapNotNull { it.sourceAppName }.distinct().sorted()
+         }
+         .stateIn(
+             scope = viewModelScope,
+             started = SharingStarted.WhileSubscribed(5000),
+             initialValue = emptyList()
+         )
 
-    // Filtered images list
+    // Filtered and sorted images list (excludes hidden images)
     val uiState: StateFlow<List<CopiedImage>> = combine(
         repository.allImages,
         searchQuery,
-        selectedAppFilter
-    ) { images, query, appFilter ->
-        var filteredList = images
+        selectedAppFilter,
+        sortField,
+        sortOrder
+    ) { images, query, appFilter, field, order ->
+        var filteredList = images.filter { !it.isHidden }
         
         // Apply search query
         if (query.isNotBlank()) {
@@ -82,6 +110,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        // Apply sorting
+        filteredList = when (field) {
+            SortField.DATE -> {
+                if (order == SortOrder.ASCENDING) {
+                    filteredList.sortedBy { it.timestamp }
+                } else {
+                    filteredList.sortedByDescending { it.timestamp }
+                }
+            }
+            SortField.NAME -> {
+                if (order == SortOrder.ASCENDING) {
+                    filteredList.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.originalFileName ?: "" })
+                } else {
+                    filteredList.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.originalFileName ?: "" })
+                }
+            }
+        }
         
         filteredList
     }.stateIn(
@@ -89,6 +135,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun updateSortField(field: SortField) {
+        sortField.value = field
+    }
+
+    fun updateSortOrder(order: SortOrder) {
+        sortOrder.value = order
+    }
 
     fun selectAppFilter(app: String?) {
         selectedAppFilter.value = app
@@ -137,4 +191,123 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteAll()
         }
     }
+
+    fun toggleLimitByCount(enabled: Boolean) {
+        isLimitByCountEnabled.value = enabled
+        ClipboardHelper.setLimitByCountEnabled(getApplication(), enabled)
+    }
+
+    fun updateLimitByCountValue(value: Int) {
+        limitByCountValue.value = value
+        ClipboardHelper.setLimitByCountValue(getApplication(), value)
+    }
+
+    fun toggleLimitByAge(enabled: Boolean) {
+        isLimitByAgeEnabled.value = enabled
+        ClipboardHelper.setLimitByAgeEnabled(getApplication(), enabled)
+    }
+
+    fun updateLimitByAgeValue(value: Int) {
+        limitByAgeValue.value = value
+        ClipboardHelper.setLimitByAgeValue(getApplication(), value)
+    }
+
+    fun toggleLimitBySize(enabled: Boolean) {
+        isLimitBySizeEnabled.value = enabled
+        ClipboardHelper.setLimitBySizeEnabled(getApplication(), enabled)
+    }
+
+    fun updateLimitBySizeValue(value: Int) {
+        limitBySizeValue.value = value
+        ClipboardHelper.setLimitBySizeValue(getApplication(), value)
+    }
+
+    // Flow for hidden images
+    val hiddenImages: StateFlow<List<CopiedImage>> = repository.allImages
+         .map { images ->
+             images.filter { it.isHidden }
+         }
+         .stateIn(
+             scope = viewModelScope,
+             started = SharingStarted.WhileSubscribed(5000),
+             initialValue = emptyList()
+         )
+
+    fun toggleAutoHideOrigin(origin: String) {
+        val current = autoHideOrigins.value.toMutableSet()
+        if (current.contains(origin)) {
+            current.remove(origin)
+        } else {
+            current.add(origin)
+        }
+        autoHideOrigins.value = current
+        ClipboardHelper.setAutoHideOrigins(getApplication(), current)
+    }
+
+    fun toggleImageHidden(image: CopiedImage) {
+        viewModelScope.launch {
+            val updated = image.copy(isHidden = !image.isHidden)
+            repository.insert(updated)
+        }
+    }
+
+    fun saveEditedImage(
+        originalImage: CopiedImage,
+        newFilePath: String,
+        replaceOriginal: Boolean,
+        onResult: () -> Unit
+    ) {
+        viewModelScope.launch {
+            if (replaceOriginal) {
+                // Delete old file if different path
+                val oldFile = File(originalImage.localFilePath)
+                val newFile = File(newFilePath)
+                if (oldFile.absolutePath != newFile.absolutePath && oldFile.exists()) {
+                    oldFile.delete()
+                }
+                val updated = originalImage.copy(
+                    localFilePath = newFilePath,
+                    timestamp = System.currentTimeMillis()
+                )
+                repository.insert(updated)
+            } else {
+                // Save as copy
+                val newFile = File(newFilePath)
+                val extension = newFile.extension.ifEmpty { "png" }
+                val timestamp = System.currentTimeMillis()
+                val originalName = originalImage.originalFileName ?: "edited_image"
+                val baseName = originalName.substringBeforeLast(".")
+                val newName = "${baseName}_edit_$timestamp.$extension"
+
+                val imageRecord = CopiedImage(
+                    localFilePath = newFilePath,
+                    mimeType = originalImage.mimeType,
+                    originalFileName = newName,
+                    timestamp = timestamp,
+                    isCopied = originalImage.isCopied,
+                    sourcePackage = originalImage.sourcePackage,
+                    sourceAppName = originalImage.sourceAppName,
+                    sourceUrl = originalImage.sourceUrl,
+                    isHidden = originalImage.isHidden
+                )
+                repository.insert(imageRecord)
+            }
+            onResult()
+        }
+    }
+
+    fun runManualCleanup(onResult: (Int, Long) -> Unit) {
+        viewModelScope.launch {
+            val result = ClipboardHelper.performStorageCleanup(getApplication())
+            onResult(result.first, result.second)
+        }
+    }
+}
+
+enum class SortField {
+    DATE, NAME
+}
+
+enum class SortOrder {
+    ASCENDING, DESCENDING
 }

@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [CopiedImage::class], version = 2, exportSchema = false)
+@Database(entities = [CopiedImage::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun copiedImageDao(): CopiedImageDao
 
@@ -24,6 +24,17 @@ abstract class AppDatabase : RoomDatabase() {
                     .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        fun resetInstance() {
+            synchronized(this) {
+                try {
+                    INSTANCE?.close()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                INSTANCE = null
             }
         }
     }

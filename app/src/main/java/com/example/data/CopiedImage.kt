@@ -13,6 +13,7 @@ data class CopiedImage(
     val isCopied: Boolean = true,
     val sourcePackage: String? = null,
     val sourceAppName: String? = null,
-    val sourceUrl: String? = null
+    val sourceUrl: String? = null,
+    val isHidden: Boolean = false
 )
 

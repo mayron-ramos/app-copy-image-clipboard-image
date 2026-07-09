@@ -12,6 +12,9 @@ interface CopiedImageDao {
     @Query("SELECT * FROM copied_images ORDER BY timestamp DESC")
     fun getAllImages(): Flow<List<CopiedImage>>
 
+    @Query("SELECT * FROM copied_images ORDER BY timestamp DESC")
+    suspend fun getAllImagesDirect(): List<CopiedImage>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertImage(image: CopiedImage): Long
 
