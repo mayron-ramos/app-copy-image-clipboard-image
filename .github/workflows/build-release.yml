@@ -37,13 +37,21 @@ jobs:
           # para que los builds sucesivos compartan y aceleren el proceso de compilación.
           cache-read-only: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
-      - name: Decode Debug Keystore
+      - name: Ensure Debug Keystore Exists
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
         run: |
-          if [ -f debug.keystore.base64 ]; then
+          if [ -n "$SIGNING_KEY_BASE64" ]; then
+            echo "Decoding signing keystore from secrets.SIGNING_KEY..."
+            echo "$SIGNING_KEY_BASE64" | base64 -d > debug.keystore
+          elif [ -f debug.keystore ]; then
+            echo "debug.keystore already exists."
+          elif [ -f debug.keystore.base64 ]; then
             echo "Decoding debug.keystore.base64..."
             base64 -d debug.keystore.base64 > debug.keystore
           else
-            echo "debug.keystore.base64 not found, skipping decoding."
+            echo "Generating a temporary debug.keystore..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
       - name: Build Debug APK
