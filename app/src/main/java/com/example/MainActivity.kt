@@ -29,6 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,6 +54,10 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import androidx.compose.foundation.border
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.data.CopiedImage
 import com.example.ui.MainViewModel
 import com.example.ui.theme.*
@@ -140,7 +146,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         modifier = Modifier.testTag("help_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.HelpOutline,
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = "Cómo usar",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
@@ -167,41 +173,7 @@ fun MainScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Section 1: Service Status Card
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                    val isDark = isSystemInDarkTheme()
-                    val cardBgBrush = remember(isServiceActive, isDark) {
-                        if (isServiceActive) {
-                            Brush.linearGradient(
-                                colors = if (isDark) {
-                                    listOf(
-                                        PrimaryDark.copy(alpha = 0.12f),
-                                        SecondaryDark.copy(alpha = 0.08f)
-                                    )
-                                } else {
-                                    listOf(
-                                        PrimaryLight.copy(alpha = 0.08f),
-                                        SecondaryLight.copy(alpha = 0.05f)
-                                    )
-                                }
-                            )
-                        } else {
-                            Brush.linearGradient(
-                                colors = if (isDark) {
-                                    listOf(
-                                        SurfaceDark.copy(alpha = 0.8f),
-                                        SurfaceDark.copy(alpha = 0.5f)
-                                    )
-                                } else {
-                                    listOf(
-                                        SurfaceLight,
-                                        BackgroundLight
-                                    )
-                                }
-                            )
-                        }
-                    }
-
+            item(span = { GridItemSpan(maxLineSpan) }) {                 Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                     val activeColor = MaterialTheme.colorScheme.primary
                     val inactiveColor = MaterialTheme.colorScheme.outlineVariant
                     val cardBorder = remember(isServiceActive, activeColor, inactiveColor) {
@@ -222,12 +194,15 @@ fun MainScreen(viewModel: MainViewModel) {
                         shape = RoundedCornerShape(28.dp),
                         border = cardBorder,
                         colors = CardDefaults.outlinedCardColors(
-                            containerColor = Color.Transparent
+                            containerColor = if (isServiceActive) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                            }
                         )
                     ) {
                         Column(
                             modifier = Modifier
-                                .background(cardBgBrush)
                                 .padding(20.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -581,7 +556,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.HelpOutline,
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -633,11 +608,30 @@ fun MainScreen(viewModel: MainViewModel) {
                     .background(Color.Black)
             ) {
                 if (file.exists()) {
+                    var scale by remember { mutableStateOf(1f) }
+                    var offset by remember { mutableStateOf(Offset.Zero) }
+                    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        if (scale > 1f) {
+                            offset += offsetChange
+                        } else {
+                            offset = Offset.Zero
+                        }
+                    }
+
                     AsyncImage(
                         model = file,
                         contentDescription = "Pantalla completa",
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y
+                            )
+                            .transformable(state = state)
                     )
                 }
 
@@ -677,10 +671,20 @@ fun MainScreen(viewModel: MainViewModel) {
                         title = { Text("Detalles de Imagen", fontWeight = FontWeight.ExtraBold) },
                         navigationIcon = {
                             IconButton(onClick = { selectedImageForDetail = null }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                             }
                         },
                         actions = {
+                            IconButton(onClick = {
+                                viewModel.copyImageToClipboard(image)
+                                Toast.makeText(context, R.string.toast_copied_success, Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copiar de nuevo",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                             IconButton(onClick = {
                                 imageToDelete = image
                                 selectedImageForDetail = null
@@ -1138,14 +1142,7 @@ fun HistoryGridItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                                )
-                            )
-                        )
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     if (file.exists()) {
                         AsyncImage(

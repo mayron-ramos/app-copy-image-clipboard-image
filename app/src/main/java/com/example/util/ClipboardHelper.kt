@@ -116,4 +116,65 @@ object ClipboardHelper {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_SERVICE_ACTIVE, active).apply()
     }
+
+    suspend fun copyImageUrlToClipboard(
+        context: Context,
+        imageUrl: String,
+        sourcePackage: String? = null,
+        sourceAppName: String? = null
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val client = okhttp3.OkHttpClient()
+            val request = okhttp3.Request.Builder()
+                .url(imageUrl)
+                .build()
+            
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext false
+                
+                val body = response.body ?: return@withContext false
+                val contentType = response.header("Content-Type") ?: "image/png"
+                
+                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(contentType) ?: "png"
+                val timestamp = System.currentTimeMillis()
+                val fileName = "img_$timestamp.$extension"
+                
+                val localFolder = File(context.filesDir, "copied_images")
+                if (!localFolder.exists()) {
+                    localFolder.mkdirs()
+                }
+                val localFile = File(localFolder, fileName)
+                
+                localFile.outputStream().use { fos ->
+                    body.source().inputStream().use { inputStream ->
+                        inputStream.copyTo(fos)
+                    }
+                }
+                
+                var originalName = imageUrl.substringAfterLast('/').substringBefore('?')
+                if (originalName.isEmpty() || !originalName.contains('.')) {
+                    originalName = "url_image.$extension"
+                }
+                
+                val database = AppDatabase.getDatabase(context)
+                val repository = CopiedImageRepository(database.copiedImageDao())
+                val imageRecord = CopiedImage(
+                    localFilePath = localFile.absolutePath,
+                    mimeType = contentType,
+                    originalFileName = originalName,
+                    timestamp = timestamp,
+                    isCopied = true,
+                    sourcePackage = sourcePackage,
+                    sourceAppName = sourceAppName
+                )
+                repository.insert(imageRecord)
+                
+                copyLocalFileToClipboard(context, localFile, contentType)
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }
