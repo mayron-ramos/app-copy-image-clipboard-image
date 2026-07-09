@@ -33,6 +33,18 @@ jobs:
         with:
           gradle-version: '9.3.1'
           validate-wrappers: false
+          # Permite escribir al caché tanto en la rama 'main' como en la creación de tags (releases),
+          # para que los builds sucesivos compartan y aceleren el proceso de compilación.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Decode Debug Keystore
+        run: |
+          if [ -f debug.keystore.base64 ]; then
+            echo "Decoding debug.keystore.base64..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          else
+            echo "debug.keystore.base64 not found, skipping decoding."
+          fi
 
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
